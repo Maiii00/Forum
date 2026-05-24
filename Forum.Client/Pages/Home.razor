@@ -1,0 +1,52 @@
+﻿@page "/"
+@using Forum.Client.Models
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+<div class="container mt-4">
+    <h1 class="mb-4">Forum</h1>
+
+    @if (mainPosts == null)
+    {
+        <p><em>載入中...</em></p>
+    }
+    else if (!mainPosts.Any())
+    {
+        <p>目前還沒有任何主題文章</p>
+    }
+    else
+    {
+        <div class="list-group">
+            @foreach (var post in mainPosts)
+            {
+                <button class="list-group-item list-group-item-action mb-2 shadow-sm rounded"
+                        @onclick="() => NavigateToDetail(post.Id)">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1 text-primary">@post.Title</h5>
+                        <small class="text-muted">@post.CreatedAt.ToString("yyyy-MM-dd HH:mm")</small>
+                    </div>
+                    <p class="mb-1 text-truncate" style="max-width: 800px;">@post.Content</p>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<Post>? mainPosts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await Http.PostAsJsonAsync("https://localhost:7254/api/Post/mainList", new { });
+
+        if (response.IsSuccessStatusCode)
+        {
+            mainPosts = await response.Content.ReadFromJsonAsync<List<Post>>();
+        }
+    }
+
+    private void NavigateToDetail(int id)
+    {
+        NavManager.NavigateTo($"/post/{id}");
+    }
+}

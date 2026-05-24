@@ -1,0 +1,54 @@
+# Temporary files
+*.swp
+*.*~
+*.pyc
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# Logs
+*.log
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+# ASP.NET Core
+appsettings.Development.json
+
+# Node (if frontend tooling exists)
+node_modules/
+
+# Publish output
+publish/
+
+# Blazor
+wwwroot/_framework/
+
+# JetBrains Rider
+.idea/
+
+# NuGet
+*.nupkg
+
+# OS
+Thumbs.db

@@ -1,0 +1,64 @@
+﻿@page "/create-post"
+@using Forum.Client.Models
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+<div class="container mt-4" style="max-width: 600px;">
+    <h2>發表新主題</h2>
+
+    <div class="card p-4 shadow-sm mt-3">
+        <div class="mb-3">
+            <label class="form-label">文章標題</label>
+            <input type="text" class="form-control" @bind="newPost.Title" placeholder="請輸入標題..." />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">文章內容</label>
+            <textarea class="form-control" rows="6" @bind="newPost.Content" placeholder="想說些什麼嗎..."></textarea>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary" @onclick="Cancel">取消</button>
+            <button class="btn btn-primary" @onclick="SubmitPost" disabled="@isSubmitting">
+                @(isSubmitting ? "發送中..." : "確認發文")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private PostRequest newPost = new();
+    private bool isSubmitting = false;
+    private string? errorMessage;
+
+    private async Task SubmitPost()
+    {
+        if (string.IsNullOrWhiteSpace(newPost.Title) || string.IsNullOrWhiteSpace(newPost.Content))
+        {
+            errorMessage = "標題與內容不能為空！";
+            return;
+        }
+
+        isSubmitting = true;
+        errorMessage = null;
+
+        var response = await Http.PostAsJsonAsync("https://localhost:7254/api/Post", newPost);
+
+        if (response.IsSuccessStatusCode)
+        {
+            NavManager.NavigateTo("/");
+        }
+        else
+        {
+            errorMessage = "發文失敗，請檢查後端連線。";
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel() => NavManager.NavigateTo("/");
+}

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Forum.Client/Forum.Client.csproj" Id="f64918b5-1228-480f-8a3a-98d2c323e731" />
+  <Project Path="Forum/Forum.csproj" />
+</Solution>
