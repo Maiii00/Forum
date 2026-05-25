@@ -24,6 +24,12 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("RedisConnection");
+    options.InstanceName = "Forum_";
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
