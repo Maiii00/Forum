@@ -1,6 +1,7 @@
 ﻿using Forum.DbContext;
 using Forum.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace Forum.Service;
 
@@ -8,10 +9,12 @@ public class PostService : IPostService
 {
     private readonly ApplicationDbContext _context;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    public PostService(ApplicationDbContext context, IHttpContextAccessor httpContextAccessor)
+    private readonly IDistributedCache _cache;
+    public PostService(ApplicationDbContext context, IHttpContextAccessor httpContextAccessor, IDistributedCache cache)
     {
         _context = context;
         _httpContextAccessor = httpContextAccessor;
+        _cache = cache;
     }
     public async Task<Post> CreatePostAsync(PostRequest postReq)
     {
@@ -32,15 +35,18 @@ public class PostService : IPostService
 
         _context.Posts.Add(post);
         await _context.SaveChangesAsync();
+        await SetCooldownAsync(ipAddress);
         return post;
     }
 
     public async Task<PostNode?> GetThreadAsync(PostRequest postReq)
     {
-        var allPosts = await _context.Posts.ToListAsync();
-        var rootPost = allPosts.FirstOrDefault(p => p.Id == postReq.Id);
+        var rootPost = await _context.Posts.FirstOrDefaultAsync(p => p.Id == postReq.Id);
         if (rootPost == null) return null;
-        return MapToTree(rootPost, allPosts);
+        var relatedPosts = await _context.Posts
+            .Where(p => p.Id == postReq.Id || p.ParentId == postReq.Id)
+            .ToListAsync();
+        return MapToTree(rootPost, relatedPosts);
     }
 
     public async Task<List<Post>> GetMainListAsync()
@@ -62,10 +68,22 @@ public class PostService : IPostService
 
     private async Task<bool> IsInCooldownAsync(string ipAddress)
     {
-        var oneMinuteAgo = DateTime.UtcNow.AddMinutes(-1);
+        string cacheKey = $"cooldown:{ipAddress}";
+        var cooldownData = await _cache.GetStringAsync(cacheKey);
 
-        return await _context.Posts
-            .AnyAsync(p => p.IpAddress == ipAddress && p.CreatedAt > oneMinuteAgo);
+        return cooldownData != null;
+    }
+
+    private async Task SetCooldownAsync(string ipAddress)
+    {
+        string cacheKey = $"cooldown:{ipAddress}";
+
+        var cacheOptions = new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60)
+        };
+
+        await _cache.SetStringAsync(cacheKey, "blocked", cacheOptions);
     }
 
     private string GetClientIpAddress()
