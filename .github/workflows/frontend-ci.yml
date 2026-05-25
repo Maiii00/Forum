@@ -1,0 +1,30 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - 'Forum.Client/**'
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - 'Forum.Client/**'
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore Dependencies
+      run: dotnet restore Forum.Client/Forum.Client.csproj
+
+    - name: Build Frontend (Release)
+      run: dotnet build Forum.Client/Forum.Client.csproj --configuration Release --no-restore

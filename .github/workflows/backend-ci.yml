@@ -1,0 +1,30 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - 'Forum/**'
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - 'Forum/**'
+
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore Dependencies
+      run: dotnet restore Forum/Forum.csproj
+
+    - name: Build Backend (Release)
+      run: dotnet build Forum/Forum.csproj --configuration Release --no-restore
