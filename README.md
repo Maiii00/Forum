@@ -19,6 +19,5 @@
 * 回文
 ![alt text](image-2.png)
 
-## 未來更新
-* 預計加入 Redis TTL 處理 cooldown
-* 優化查詢
+* 發文回文冷卻
+![alt text](image-3.png)
