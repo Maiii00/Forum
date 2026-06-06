@@ -43,9 +43,21 @@ public class PostService : IPostService
     {
         var rootPost = await _context.Posts.FirstOrDefaultAsync(p => p.Id == postReq.Id);
         if (rootPost == null) return null;
+
+        var rawSql = @"
+            WITH PostTree AS (
+                SELECT * FROM [Posts] WHERE [Id] = {0}
+                UNION ALL
+                SELECT p.* FROM [Posts] p
+                INNER JOIN PostTree pt ON p.[ParentId] = pt.[Id]
+            )
+            SELECT * FROM PostTree ORDER BY [CreatedAt] ASC;";
+
         var relatedPosts = await _context.Posts
-            .Where(p => p.Id == postReq.Id || p.ParentId == postReq.Id)
+            .FromSqlRaw(rawSql, postReq.Id)
+            .AsNoTracking()
             .ToListAsync();
+
         return MapToTree(rootPost, relatedPosts);
     }
 

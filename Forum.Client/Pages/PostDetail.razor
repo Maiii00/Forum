@@ -3,8 +3,12 @@
 @inject HttpClient Http
 @inject NavigationManager NavManager
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
 <div class="container mt-4" style="max-width: 800px;">
-    <button class="btn btn-outline-secondary btn-sm mb-3" @onclick="GoBack">⬅️ 返回首頁</button>
+    <button class="btn btn-outline-secondary btn-sm mb-3" @onclick="GoBack">
+        <i class="bi bi-arrow-left me-1"></i> 返回首頁
+    </button>
 
     @if (threadData == null)
     {
@@ -22,11 +26,16 @@
                     發表於: @threadData.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
                 </h6>
                 <p class="card-text fs-5" style="white-space: pre-line;">@threadData.Content</p>
+                <div class="d-flex justify-content-end">
+                    <button class="btn btn-sm btn-link text-primary text-decoration-none" @onclick='() => SetReplyTarget(Id, "主貼文")'>
+                        <i class="bi bi-chat-left-text me-1"></i> 回覆主貼文
+                    </button>
+                </div>
             </div>
         </div>
 
-        <h4 class="mb-3">所有回覆 (@(threadData.Replies?.Count ?? 0))</h4>
-        
+        <h4 class="mb-3">所有回覆</h4>
+
         @if (threadData.Replies == null || !threadData.Replies.Any())
         {
             <div class="alert alert-light border text-muted">目前還沒有人回覆這篇貼文，快來當第一個吧！</div>
@@ -36,34 +45,45 @@
             <div class="list-group mb-4">
                 @for (int i = 0; i < threadData.Replies.Count; i++)
                 {
-                    var reply = threadData.Replies[i];
-                    <div class="list-group-item list-group-item-action p-3 mb-2 shadow-sm rounded">
-                        <div class="d-flex w-100 justify-content-between mb-2">
-                            <strong class="text-secondary">@(i + 1) 樓</strong>
-                            <small class="text-muted">@reply.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</small>
-                        </div>
-                        <p class="mb-1 text-dark" style="white-space: pre-line;">@reply.Content</p>
-                    </div>
+                    @RenderSingleReply(threadData.Replies[i], i + 1, 0)
                 }
             </div>
         }
 
-        <div class="card p-3 shadow-sm bg-light mt-4">
-            <h5 class="mb-3 text-secondary">發表你的回覆</h5>
+        <div class="card p-3 shadow-sm bg-light mt-4 border-info">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0 text-secondary">發表你的回覆</h5>
+                <span class="badge bg-info text-dark">
+                    <i class="bi bi-reply-fill me-1"></i> 正在回覆：@targetName
+                </span>
+            </div>
+
             <div class="mb-3">
-                <textarea class="form-control" rows="4" 
-                          @bind="newReplyContent" 
+                <textarea class="form-control" rows="4"
+                          @bind="newReplyContent"
                           placeholder="請輸入你的回覆內容..."></textarea>
             </div>
-            
+
             @if (!string.IsNullOrEmpty(errorMessage))
             {
                 <div class="alert alert-danger py-2">@errorMessage</div>
             }
 
             <div class="d-flex justify-content-end">
+                @if (activeParentId != Id)
+                {
+                    <button class="btn btn-sm btn-outline-secondary me-2" @onclick="ResetReplyTarget">取消指定目標</button>
+                }
                 <button class="btn btn-primary" @onclick="SubmitReply" disabled="@isSubmitting">
-                    @(isSubmitting ? "傳送中..." : "送出回覆")
+                    @if (isSubmitting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <span>傳送中...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-send me-1"></i> <span>送出回覆</span>
+                    }
                 </button>
             </div>
         </div>
@@ -71,15 +91,50 @@
 </div>
 
 @code {
+    private RenderFragment RenderSingleReply(PostNode reply, int floorNumber, int depth) => __builder =>
+    {
+        if (reply == null) return;
+
+        var marginClass = depth == 0 ? "mb-2 shadow-sm border-start border-4 border-secondary" : "mt-2 ms-4 border-start border-2 border-info bg-light p-2";
+
+        <div class="list-group-item p-3 rounded @marginClass">
+            <div class="d-flex w-100 justify-content-between mb-2">
+                <strong class="text-secondary">@(depth == 0 ? $"{floorNumber} 樓" : $"{depth} 層子回覆")</strong>
+                <small class="text-muted">@reply.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</small>
+            </div>
+            <p class="mb-2 text-dark" style="white-space: pre-line;">@reply.Content</p>
+            <div class="d-flex justify-content-end">
+                @{
+                    var shortContent = reply.Content?.Length > 10 ? reply.Content.Substring(0, 10) + "..." : reply.Content;
+                }
+                <button class="btn btn-sm btn-link text-decoration-none p-0"
+                        @onclick="() => SetReplyTarget(reply.Id, shortContent)">
+                    <i class="bi bi-reply me-1"></i> 回覆此條
+                </button>
+            </div>
+
+            @if (reply.Replies != null && reply.Replies.Any())
+            {
+                foreach (var subReply in reply.Replies)
+                {
+                    @RenderSingleReply(subReply, floorNumber, depth + 1)
+                }
+            }
+        </div>
+    };
+
     [Parameter] public int Id { get; set; }
 
     private PostNode? threadData;
     private string newReplyContent = "";
     private bool isSubmitting = false;
     private string? errorMessage;
+    private int activeParentId;
+    private string targetName = "主貼文";
 
     protected override async Task OnInitializedAsync()
     {
+        activeParentId = Id;
         await LoadThreadData();
     }
 
@@ -87,7 +142,7 @@
     {
         var request = new PostRequest { Id = Id };
         var response = await Http.PostAsJsonAsync("https://localhost:7254/api/Post/getPosts", request);
-            
+
         if (response.IsSuccessStatusCode)
         {
             threadData = await response.Content.ReadFromJsonAsync<PostNode>();
@@ -96,6 +151,18 @@
         {
             errorMessage = "無法載入文章討論串。";
         }
+    }
+
+    private void SetReplyTarget(int parentId, string name)
+    {
+        activeParentId = parentId;
+        targetName = name;
+    }
+
+    private void ResetReplyTarget()
+    {
+        activeParentId = Id;
+        targetName = "主貼文";
     }
 
     private async Task SubmitReply()
@@ -113,7 +180,7 @@
         {
             Title = null,
             Content = newReplyContent,
-            ParentId = Id
+            ParentId = activeParentId
         };
 
         var response = await Http.PostAsJsonAsync("https://localhost:7254/api/Post", replyRequest);
@@ -121,6 +188,7 @@
         if (response.IsSuccessStatusCode)
         {
             newReplyContent = "";
+            ResetReplyTarget();
             await LoadThreadData();
         }
         else
